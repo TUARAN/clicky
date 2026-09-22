@@ -194,6 +194,17 @@ class ClaudeAPI {
                 continue
             }
 
+            if eventType == "error" {
+                let errorDetails = eventPayload["error"] as? [String: Any]
+                let errorType = errorDetails?["type"] as? String ?? "unknown_error"
+                let errorMessage = errorDetails?["message"] as? String ?? "Unknown streaming error"
+                throw NSError(
+                    domain: "ClaudeAPI",
+                    code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "API stream error (\(errorType)): \(errorMessage)"]
+                )
+            }
+
             // We care about content_block_delta events that contain text chunks
             if eventType == "content_block_delta",
                let delta = eventPayload["delta"] as? [String: Any],
