@@ -179,6 +179,7 @@ class ClaudeAPI {
 
         // Parse SSE stream — each event is "data: {json}\n\n"
         var accumulatedResponseText = ""
+        var didReceiveMessageStop = false
 
         for try await line in byteStream.lines {
             // SSE lines look like: "data: {...}"
@@ -192,6 +193,11 @@ class ClaudeAPI {
                   let eventPayload = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
                   let eventType = eventPayload["type"] as? String else {
                 continue
+            }
+
+            if eventType == "message_stop" {
+                didReceiveMessageStop = true
+                break
             }
 
             if eventType == "error" {
@@ -216,6 +222,14 @@ class ClaudeAPI {
                 let currentAccumulatedText = accumulatedResponseText
                 await onTextChunk(currentAccumulatedText)
             }
+        }
+
+        guard didReceiveMessageStop else {
+            throw NSError(
+                domain: "ClaudeAPI",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "API stream ended before message_stop"]
+            )
         }
 
         let duration = Date().timeIntervalSince(startTime)
